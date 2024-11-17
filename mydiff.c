@@ -6,28 +6,30 @@
 #define MAX_LINES 1000
 #define MAX_LINE_LENGTH 1024
 
-int print_done=0;
+static int print_done=0;
 
 void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_count,int old_offset,int new_offset){
     int total_lines=oldlines_count+newlines_count;
     int line_diff=oldlines_count-newlines_count;
-    int x_position_vector=2*total_lines+1;
-    if(oldlines_count>0 && newlines_count>0){
-        int * v_front=(int *)calloc(x_position_vector,sizeof(int));
-        int * v_back=(int *)calloc(x_position_vector,sizeof(int));
+    // int x_position_vector_size=2*total_lines+1;
+    int x_position_vector_size= (oldlines_count<newlines_count)? 2*oldlines_count+2 : 2*newlines_count+2;
+    if((oldlines_count>0) && (newlines_count>0)){
+        int * v_front=(int *)calloc(x_position_vector_size,sizeof(int));
+        int * v_back=(int *)calloc(x_position_vector_size,sizeof(int));
         int * v1,*v2;
         int o,m;
         if(v_back==NULL || v_front==NULL){
             printf("Error in allocationg space.\n");
             exit(EXIT_FAILURE);
         }
-        // for (int i = 0; i < x_position_vector; i++) {
+        // for (int i = 0; i < x_position_vector_size; i++) {
         //     v_front[i] = i-total_lines;
         //     v_back[i] = i-total_lines;
         // }
-        v_front[total_lines+1]=0;
-        v_back[total_lines+1]=0;
-        for(int D=0;D<oldlines_count+newlines_count;D++){
+        // v_front[total_lines+1]=0;
+        // v_back[total_lines+1]=0;
+        int iterations=(total_lines/2) + (total_lines%2);
+        for(int D=0;D<=iterations;D++){
             for(int i=0;i<2;i++){
                 if(i==0){
                     v1=v_front;
@@ -50,18 +52,21 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
                     limit2=D;
                 for(int j=limit1;j<=limit2;j=j+2){
                     int a,b,a0,b0,z;
-                    if((j==-D || j!=D) && v1[total_lines+j-1]<v1[total_lines+j+1]){
-                        a=v1[total_lines+j+1];
+                    int temp1=(j-1)%x_position_vector_size,temp2=(j+1)%x_position_vector_size;
+                    if(temp1<0)
+                        temp1+=x_position_vector_size;
+                    if(temp2<0)
+                        temp2+=x_position_vector_size;
+                    if(j==-D || (j!=D && v1[temp1]<v1[temp2])){
+                        a=v1[temp2];
                     }
                     else{
-                        a=v1[total_lines+j-1]+1;
+                        a=v1[temp1]+1;
                     }
-                    if(D==0)
-                        a=-1;
                     b=a-j;
                     a0=a,b0=b;
-                    while(a<oldlines_count-1 && b<newlines_count-1){
-                        if(strcmp(old_source[old_offset+(1-o)*oldlines_count + m*(a+1)+(o-1)],new_source[new_offset+(1-o)*newlines_count+m*(b+1)+(o-1)])==0){
+                    while(a<oldlines_count && b<newlines_count){
+                        if(strcmp(old_source[(1-o)*oldlines_count + m*a+(o-1)],new_source[(1-o)*newlines_count+m*b+(o-1)])==0){
                             a++;
                             b++;
                         }
@@ -69,41 +74,47 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
                             break;
                         }
                     }
-                    v1[total_lines+j]=a;
+                    int temp3=j%x_position_vector_size;
+                    if(temp3<0)
+                        temp3+=x_position_vector_size;
+                    v1[temp3]=a;
                     z=-(j-line_diff);
-                    if(total_lines%2==o && z>=-(D-o) && z<=D-o && v1[total_lines+j]+v2[total_lines+z]+2>=oldlines_count){
+                    int temp4=z%x_position_vector_size;
+                    if(temp4<0)
+                        temp4+=x_position_vector_size;
+                    if(total_lines%2==o && z>=-(D-o) && z<=D-o && v1[temp3]+v2[temp4]>=oldlines_count){
                         int D1,x,y,x0,y0;
                         if(o==1){
                             D1=2*D-1;
-                            x=a+1;
-                            y=b+1;
-                            x0=a0+1;
-                            y0=b0+1;
+                            x0=a0;
+                            y0=b0;
+                            x=a;
+                            y=b;
                         }
                         else{
                             D1=2*D;
-                            x=oldlines_count-(a0+1);
-                            y=newlines_count-(b0+1);
-                            x0=oldlines_count-(a+1);
-                            y0=newlines_count-(b+1);
+                            x0=oldlines_count-a;
+                            y0=newlines_count-b;
+                            x=oldlines_count-a0;
+                            y=newlines_count-b0;
                         }
                         if(D1>1 || (x!=x0 && y!=y0)){
-                            diff(old_source,new_source,x0,y0,old_offset,new_offset);
-                            diff(old_source,new_source,oldlines_count-x,newlines_count-y,old_offset+x,new_offset+y);
                             free(v_front);
                             free(v_back);
+                            diff(old_source,new_source,x0,y0,old_offset,new_offset);
+                            diff(old_source+x,new_source+y,oldlines_count-x,newlines_count-y,old_offset+x,new_offset+y);
                             return;
                         }
                         else if(newlines_count>oldlines_count){
-                            diff(old_source,new_source,0,newlines_count-oldlines_count,old_offset+oldlines_count,new_offset+oldlines_count);
                             free(v_front);
                             free(v_back);
+                            diff(NULL,new_source+oldlines_count,0,newlines_count-oldlines_count,old_offset+oldlines_count,new_offset+oldlines_count);
                             return;
                         }
                         else if(newlines_count<oldlines_count){
-                            diff(old_source,new_source,oldlines_count-newlines_count,0,old_offset+newlines_count,new_offset+newlines_count);
                             free(v_front);
                             free(v_back);
+                            diff(old_source+newlines_count,NULL,oldlines_count-newlines_count,0,old_offset+newlines_count,new_offset+newlines_count);
                             return;
                         }
                     }
@@ -118,10 +129,10 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
             print_done=1;
         }
         for(int j=0;j<oldlines_count;j++){
-            printf("%-5s %10d %10d %-80s\n", "-", old_offset+j+1,new_offset+1 , old_source[old_offset+j]);
-
+            printf("\033[31m%-5s %10d %10d %-80s\033[0m\n", "-", old_offset+j+1,new_offset+1 , old_source[j]);
             // printf("- , position old: %d , content: %s\n",old_offset+j,old_source[old_offset+j]);
         }
+        printf("\n");
         return;
     }
     // Lines inserted in new file
@@ -131,9 +142,10 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
             print_done=1;
         }
         for(int j=0;j<newlines_count;j++){
-            printf("%-5s %10d %10d %-80s\n", "+", old_offset+1, new_offset + j+1, new_source[new_offset + j]);
+            printf("\033[32m%-5s %10d %10d %-80s\033[0m\n", "+", old_offset+1, new_offset + j+1, new_source[j]);
             // printf("+ , position old: %d , position new: %d , content: %s\n",old_offset,new_offset+j,new_source[new_offset+j]);
         }
+        printf("\n");
         return;
     }
 }
