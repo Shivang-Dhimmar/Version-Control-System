@@ -2,30 +2,29 @@
 #include<string.h>
 #include<stdlib.h>
 #include<fcntl.h>
-
-#define MAX_LINES 1000
-#define MAX_LINE_LENGTH 1024
+#include<unistd.h>
+#include "mydiff.h"
 
 static int print_done=0;
+int * v_front;
+int * v_back;
+int x_position_vector_size;
+int changes_file_fd;
+char buffer_for_file[150];
+int length;
 
-void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_count,int old_offset,int new_offset){
+void diff(line * old_source,line * new_source,int oldlines_count,int newlines_count,int old_offset,int new_offset){
     int total_lines=oldlines_count+newlines_count;
     int line_diff=oldlines_count-newlines_count;
     // int x_position_vector_size=2*total_lines+1;
-    int x_position_vector_size= (oldlines_count<newlines_count)? 2*oldlines_count+2 : 2*newlines_count+2;
+    x_position_vector_size= (oldlines_count<newlines_count)? 2*oldlines_count+2 : 2*newlines_count+2;
     if((oldlines_count>0) && (newlines_count>0)){
-        int * v_front=(int *)calloc(x_position_vector_size,sizeof(int));
-        int * v_back=(int *)calloc(x_position_vector_size,sizeof(int));
         int * v1,*v2;
         int o,m;
-        if(v_back==NULL || v_front==NULL){
-            printf("Error in allocationg space.\n");
-            exit(EXIT_FAILURE);
+        for (int i = 0; i < x_position_vector_size; i++) {
+            v_front[i] = 0;
+            v_back[i] = 0;
         }
-        // for (int i = 0; i < x_position_vector_size; i++) {
-        //     v_front[i] = i-total_lines;
-        //     v_back[i] = i-total_lines;
-        // }
         // v_front[total_lines+1]=0;
         // v_back[total_lines+1]=0;
         int iterations=(total_lines/2) + (total_lines%2);
@@ -66,7 +65,7 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
                     b=a-j;
                     a0=a,b0=b;
                     while(a<oldlines_count && b<newlines_count){
-                        if(strcmp(old_source[(1-o)*oldlines_count + m*a+(o-1)],new_source[(1-o)*newlines_count+m*b+(o-1)])==0){
+                        if(strcmp(old_source[(1-o)*oldlines_count + m*a+(o-1)].content,new_source[(1-o)*newlines_count+m*b+(o-1)].content)==0){
                             a++;
                             b++;
                         }
@@ -99,22 +98,18 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
                             y=newlines_count-b0;
                         }
                         if(D1>1 || (x!=x0 && y!=y0)){
-                            free(v_front);
-                            free(v_back);
                             diff(old_source,new_source,x0,y0,old_offset,new_offset);
                             diff(old_source+x,new_source+y,oldlines_count-x,newlines_count-y,old_offset+x,new_offset+y);
                             return;
                         }
                         else if(newlines_count>oldlines_count){
-                            free(v_front);
-                            free(v_back);
-                            diff(NULL,new_source+oldlines_count,0,newlines_count-oldlines_count,old_offset+oldlines_count,new_offset+oldlines_count);
+                            // diff(NULL,new_source+oldlines_count,0,newlines_count-oldlines_count,old_offset+oldlines_count,new_offset+oldlines_count);
+                            diff(old_source+oldlines_count,new_source+oldlines_count,0,newlines_count-oldlines_count,old_offset+oldlines_count,new_offset+oldlines_count);
                             return;
                         }
                         else if(newlines_count<oldlines_count){
-                            free(v_front);
-                            free(v_back);
-                            diff(old_source+newlines_count,NULL,oldlines_count-newlines_count,0,old_offset+newlines_count,new_offset+newlines_count);
+                            // diff(old_source+newlines_count,NULL,oldlines_count-newlines_count,0,old_offset+newlines_count,new_offset+newlines_count);
+                            diff(old_source+newlines_count,new_source+newlines_count,oldlines_count-newlines_count,0,old_offset+newlines_count,new_offset+newlines_count);
                             return;
                         }
                     }
@@ -125,12 +120,16 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
     // Lines Deleted in old file
     else if(oldlines_count>0){
         if(!print_done){
-            printf("%-5s %-10s %-10s %-80s\n", "Action", "Position Old", "Position New", "Content");
+            printf("%-5s %-10s %-10s %-10s %-10s %-80s\n", "Action", "Old Position", "New Position", "Old Offset", "New Offset" , "Content");
             print_done=1;
         }
         for(int j=0;j<oldlines_count;j++){
-            printf("\033[31m%-5s %10d %10d %-80s\033[0m\n", "-", old_offset+j+1,new_offset+1 , old_source[j]);
-            // printf("- , position old: %d , content: %s\n",old_offset+j,old_source[old_offset+j]);
+            length=snprintf(buffer_for_file,sizeof(buffer_for_file),"%s,%d,%d,%u,%u,%s\n", "-", old_offset+j+1,new_offset+1 ,old_source[j].offset,new_source[0].offset, old_source[j].content);
+            if(write(changes_file_fd,buffer_for_file,length)<0){
+                printf("Error in writing the diff in file.\n");
+                exit(EXIT_FAILURE);
+            }
+            printf("\033[31m%-5s %10d %10d %10u %10u %-80s\033[0m\n", "-", old_offset+j+1,new_offset+1 ,old_source[j].offset,new_source[0].offset, old_source[j].content);
         }
         printf("\n");
         return;
@@ -138,12 +137,16 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
     // Lines inserted in new file
     else if(newlines_count>0){
         if(!print_done){
-            printf("%-5s %-10s %-10s %-80s\n", "Action", "Position Old", "Position New", "Content");
+            printf("%-5s %-10s %-10s %-10s %-10s %-80s\n", "Action", "Old Position", "New Position", "Old Offset", "New Offset" , "Content");
             print_done=1;
         }
         for(int j=0;j<newlines_count;j++){
-            printf("\033[32m%-5s %10d %10d %-80s\033[0m\n", "+", old_offset+1, new_offset + j+1, new_source[j]);
-            // printf("+ , position old: %d , position new: %d , content: %s\n",old_offset,new_offset+j,new_source[new_offset+j]);
+            length=snprintf(buffer_for_file,sizeof(buffer_for_file),"%s,%d,%d,%u,%u,%s\n", "+", old_offset+1, new_offset + j+1,old_source[0].offset,new_source[j].offset, new_source[j].content);
+            if(write(changes_file_fd,buffer_for_file,length)<0){
+                printf("Error in writting the diff in file.\n");
+                exit(EXIT_FAILURE);
+            }
+            printf("\033[32m%-5s %10d %10d %10u %10u %-80s\033[0m\n", "+", old_offset+1, new_offset + j+1,old_source[0].offset,new_source[j].offset, new_source[j].content);
         }
         printf("\n");
         return;
@@ -151,30 +154,33 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
 }
 
 // Read File line by line & store it in lines c-string array & return the number of lines readed
-int read_lines(char ** lines,FILE * source){
+int read_lines(line  ** lines,FILE * source){
     char * buffer=(char *)malloc(sizeof(char)*MAX_LINE_LENGTH);
     if(!buffer){
         printf("Error in memory allocation for buffer.\n");
         exit(EXIT_FAILURE);
     }
     int no_lines=0,capacity=MAX_LINES;
+    unsigned int offset=0;
     while(fgets(buffer,MAX_LINE_LENGTH,source)){
         if(no_lines==capacity){
             capacity*=2;
-            char **temp = realloc(lines, sizeof(char*) * capacity); 
+            line *temp = (line *)realloc((*lines), sizeof(line) * capacity); 
             if (!temp) {
-                perror("Error in memory allocation for storing lines pointer.");
+                printf("Error in memory allocation for storing lines pointer.");
                 exit(EXIT_FAILURE);
             }
-            lines = temp; 
+            (*lines) = temp; 
         }
         buffer[strcspn(buffer,"\n")]='\0';
-        lines[no_lines]=(char *)malloc(strlen(buffer)+1);
-        if(!lines[no_lines]){
+        (*lines)[no_lines].content=(char *)malloc(strlen(buffer)+1);
+        (*lines)[no_lines].offset=offset;
+        if(!(*lines)[no_lines].content){
             printf("Error in memory allocation for storing lines.\n");
             exit(EXIT_FAILURE);
         }
-        strcpy(lines[no_lines],buffer);
+        strcpy((*lines)[no_lines].content,buffer);
+        offset+=(strlen(buffer)+1);
         no_lines++;
     }
     free(buffer);
@@ -196,8 +202,13 @@ int main(int argc,char * argv[]){
         printf("Error in openning new source file %s",argv[2]);
         exit(EXIT_FAILURE);
     }
-    char ** oldlines=malloc(sizeof(char *)*MAX_LINES);
-    char ** newlines=malloc(sizeof(char *)*MAX_LINES);
+    changes_file_fd=open("chages.txt",O_WRONLY | O_CREAT | O_TRUNC,0644);
+    if(changes_file_fd<0){
+        printf("Error in creating or opening the changes file.\n");
+        exit(EXIT_FAILURE);
+    }
+    line * oldlines=(line *)malloc(sizeof(line)*MAX_LINES);
+    line * newlines=(line *)malloc(sizeof(line)*MAX_LINES);
     if(!oldlines){
         printf("Error in memory allocation for old source file.\n");
         exit(EXIT_FAILURE);
@@ -206,8 +217,16 @@ int main(int argc,char * argv[]){
         printf("Error in memory allocation for new source file.\n");
         exit(EXIT_FAILURE);
     }
-    int oldlines_count = read_lines(oldlines,old_sourcefile);
-    int newlines_count = read_lines(newlines,new_sourcefile);
+    int oldlines_count = read_lines(&oldlines,old_sourcefile);
+    int newlines_count = read_lines(&newlines,new_sourcefile);
+    
+    x_position_vector_size= (oldlines_count<newlines_count)? 2*oldlines_count+2 : 2*newlines_count+2;
+    v_front=(int *)calloc(x_position_vector_size,sizeof(int));
+    v_back=(int *)calloc(x_position_vector_size,sizeof(int));
+    if(v_back==NULL || v_front==NULL){
+        printf("Error in allocationg space.\n");
+        exit(EXIT_FAILURE);
+    }
     if(fclose(old_sourcefile)!=0){
         printf("Error in closing old source file.\n");
         exit(EXIT_FAILURE);
@@ -220,6 +239,8 @@ int main(int argc,char * argv[]){
     if(!print_done){
         printf("No difference in files.\n");
     }
+    free(v_front);
+    free(v_back);
     free(oldlines);
     free(newlines);
     return 0;
