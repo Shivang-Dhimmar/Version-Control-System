@@ -9,9 +9,10 @@ static int print_done=0;
 int * v_front;
 int * v_back;
 int x_position_vector_size;
-int changes_file_fd;
 char buffer_for_file[150];
 int length;
+int changes_file_fd;
+char * new_file_name;
 
 void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_count,int old_offset,int new_offset){
     int total_lines=oldlines_count+newlines_count;
@@ -120,6 +121,7 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
     // Lines Deleted in old file
     else if(oldlines_count>0){
         if(!print_done){
+            printf("%s\n",new_file_name);
             printf("%-5s %-10s %-80s\n", "Action", "Line Number", "Content");
             print_done=1;
         }
@@ -127,7 +129,7 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
             // length=snprintf(buffer_for_file,sizeof(buffer_for_file),"%c,%d,%d,%u,%u,%s\n", "-", old_offset+j+1,new_offset+1 ,old_source[j].offset,new_source[0].offset, old_source[j].content);
             length=snprintf(buffer_for_file,sizeof(buffer_for_file),"%c,%d,%s\n", '-', old_offset+j+1 ,old_source[j]);
             if(write(changes_file_fd,buffer_for_file,length)<0){
-                printf("Error in writing the diff in file.\n");
+                printf("Error in writting the diff in file.\n");
                 exit(EXIT_FAILURE);
             }
             printf("\033[31m%-5s %10d %-80s\033[0m\n", "-", old_offset+j+1, old_source[j]);
@@ -139,6 +141,7 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
     // Lines inserted in new file
     else if(newlines_count>0){
         if(!print_done){
+            printf("%s\n",new_file_name);
             printf("%-5s %-10s %-80s\n", "Action", "Line Number", "Content");
             print_done=1;
         }
@@ -157,21 +160,13 @@ void diff(char ** old_source,char ** new_source,int oldlines_count,int newlines_
 }
 
 
-int main(int argc,char * argv[]){
-    if(argc!=3){
-        printf("Invalid Command. Use ./mydiff <source_file> <destination_file>\n");
-        exit(EXIT_FAILURE);
-    }    
-    FILE * old_sourcefile=fopen(argv[1],"r");
-    if(!old_sourcefile){
-        printf("Error in opening old source file %s!",argv[1]);
-        exit(EXIT_FAILURE);
-    }
-    FILE * new_sourcefile=fopen(argv[2],"r");
+int mydiff(char * oldfile_content,char * newfile){   
+    FILE * new_sourcefile=fopen(newfile,"r");
     if(!new_sourcefile){
-        printf("Error in openning new source file %s",argv[2]);
+        printf("Error in openning new source file %s",newfile);
         exit(EXIT_FAILURE);
     }
+    new_file_name=newfile;
     changes_file_fd=open("changes.txt",O_WRONLY | O_CREAT | O_TRUNC,0644);
     if(changes_file_fd<0){
         printf("Error in creating or opening the changes file.\n");
@@ -187,18 +182,14 @@ int main(int argc,char * argv[]){
         printf("Error in memory allocation for new source file.\n");
         exit(EXIT_FAILURE);
     }
-    int oldlines_count = read_lines(oldlines,old_sourcefile);
-    int newlines_count = read_lines(newlines,new_sourcefile);
+    int oldlines_count = read_lines_string(oldlines,oldfile_content);
+    int newlines_count = read_lines_file(newlines,new_sourcefile);
     
     x_position_vector_size= (oldlines_count<newlines_count)? 2*oldlines_count+2 : 2*newlines_count+2;
     v_front=(int *)calloc(x_position_vector_size,sizeof(int));
     v_back=(int *)calloc(x_position_vector_size,sizeof(int));
     if(v_back==NULL || v_front==NULL){
         printf("Error in allocationg space.\n");
-        exit(EXIT_FAILURE);
-    }
-    if(fclose(old_sourcefile)!=0){
-        printf("Error in closing old source file.\n");
         exit(EXIT_FAILURE);
     }
     if(fclose(new_sourcefile)!=0){

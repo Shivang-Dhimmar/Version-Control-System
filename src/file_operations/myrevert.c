@@ -5,7 +5,7 @@
 #include<string.h>
 #include "common.h"
 
-int main(int argc,char * argv[]){
+int myrevert(int argc,char * argv[]){
     if(argc!=3){
         printf("Invalid Command. Use ./myrevert <old_file_name> <new_file_name>\n");
         exit(EXIT_FAILURE);
@@ -30,12 +30,9 @@ int main(int argc,char * argv[]){
 
     // Useful parameters for performing changes
     int line_drift=0,start_line,end_line,temp_line=1,completed_changes=0,lines_at_once,capacity=source_line_count,temp_offset;
-    long offset_drift=0;
-    bool flag=false,flag1,flag2;
     char previous_operation=changes_lines[0].operation;
     int previous_line=changes_lines[0].line_no;
     start_line=end_line=previous_line;
-    int temp_line2,start2,end2,previous_line2,lines_at_once2;
     while(1){
         while((temp_line<changes_line_count) && (changes_lines[temp_line].operation==previous_operation) && (changes_lines[temp_line].line_no==previous_line+1)){
             end_line=changes_lines[temp_line].line_no;

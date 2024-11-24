@@ -2,13 +2,13 @@ CC = gcc
 CFLAGES = -Wall
 INCLUDE_DIR = -I ../../include/file_operations
 
-all: mydiff myrevert
-
+all: mydiff
+# all: mydiff myrevert
 mydiff: mydiff.c common.o 
-	$(CC) $(INCLUDE_DIR) mydiff.c common.o -o mydiff
+	$(CC) $(CFLAGES) $(INCLUDE_DIR) -c mydiff.c -o mydiff.o
 
-myrevert: myrevert.c common.o 
-	$(CC) $(INCLUDE_DIR) myrevert.c common.o -o myrevert
+# myrevert: myrevert.c common.o 
+# 	$(CC) $(CFLAGES) $(INCLUDE_DIR) -c myrevert.c -o myrevert.o
 
 common.o:common.c 
 	$(CC) $(CFLAGES) $(INCLUDE_DIR) -c common.c -o common.o
