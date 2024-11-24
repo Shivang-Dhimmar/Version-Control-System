@@ -1,0 +1,8 @@
+Commit,#Files,Folder Size,Changes,My object Folder Size(Bytes),Git  object Folder Size(Bytes),Action
+1,2,20.8KB,0,40K,48K,First Commit(file1.c & file2.c)
+2,2,20.8KB,1,72K,76K,1 line changed
+3,2,20.8KB,6,96K,104K,6 line changed
+4,3,42.8KB,6,132K,140K,Folder-1 with one file file3.c added
+5,3,42.8KB,37,180K,196K,changes(deletion) in all three the files
+6,5,74.1KB,0,224K,236K,Folder-2 with two file file4.c & file-5 added
+7,5,74.1KB,30,252K,272K,file4.c updated

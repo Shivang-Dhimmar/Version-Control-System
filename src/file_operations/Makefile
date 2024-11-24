@@ -13,4 +13,4 @@ common.o:common.c
 	$(CC) $(CFLAGES) $(INCLUDE_DIR) -c common.c -o common.o
 
 clean:
-	rm -f common.o mydiff myrevert
+	rm -f common.o mydiff.o myrevert.o
