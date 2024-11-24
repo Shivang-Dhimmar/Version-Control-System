@@ -138,16 +138,15 @@ int read_changes(changes ** lines,char * source){
     //     no_lines++;
     // }
     // free(content);
-    printf("%s\n",source);
     token = strtok(source, ",");
     while (token != NULL) {
-        if(source[temp-2]==','){
+        if(temp>2 && source[temp-2]=='\0'){
             operation=token[1];
         }
         else{
             operation = token[0]; 
         }
-        temp+=strlen(token)+1;
+        temp+=2;
         token = strtok(NULL, ",");
         if (token != NULL) {
             line_number = atoi(token);
