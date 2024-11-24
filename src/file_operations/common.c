@@ -113,10 +113,56 @@ int read_changes(changes ** lines,char * source){
         printf("Error in memory allocation for buffer.\n");
         exit(EXIT_FAILURE);
     }
-    int no_lines=0,capacity=MAX_CHANGES;
-    char operation;
+    int no_lines=0,capacity=MAX_CHANGES,temp=0;
+    char operation,*token;
     int line_number;
-    while(sscanf(source, "%c,%d,%[^\n]\n", &operation, &line_number, content) == 3) {
+    // while(sscanf(source, "%c,%d,%[^\n]\n", &operation, &line_number, content) == 3) {
+    //     if(no_lines==capacity){
+    //         capacity*=2;
+    //         changes * temp = realloc((*lines), sizeof(changes*) * capacity); 
+    //         if (!temp) {
+    //             printf("Error in memory allocation for storing lines pointer.");
+    //             exit(EXIT_FAILURE);
+    //         }
+    //         (*lines) = temp; 
+    //     }
+    //     content[strcspn(content,"\n")]='\0';
+    //     (*lines)[no_lines].content=(char *)malloc(strlen(content)+1);
+    //     if(!(*lines)[no_lines].content){
+    //         printf("Error in memory allocation for storing lines.\n");
+    //         exit(EXIT_FAILURE);
+    //     }
+    //     strcpy((*lines)[no_lines].content,content);
+    //     (*lines)[no_lines].operation=operation;
+    //     (*lines)[no_lines].line_no=line_number;
+    //     no_lines++;
+    // }
+    // free(content);
+    printf("%s\n",source);
+    token = strtok(source, ",");
+    while (token != NULL) {
+        if(source[temp-2]==','){
+            operation=token[1];
+        }
+        else{
+            operation = token[0]; 
+        }
+        temp+=strlen(token)+1;
+        token = strtok(NULL, ",");
+        if (token != NULL) {
+            line_number = atoi(token);
+        }
+        temp+=strlen(token)+1;
+        if(source[temp]=='\n'){
+            // token = strtok(NULL, "\n");
+            strcpy(content, "");
+            temp++;
+        }
+        else{
+            token = strtok(NULL, "\n");
+            strcpy(content, token); 
+            temp+=strlen(token)+1;
+        }
         if(no_lines==capacity){
             capacity*=2;
             changes * temp = realloc((*lines), sizeof(changes*) * capacity); 
@@ -126,7 +172,6 @@ int read_changes(changes ** lines,char * source){
             }
             (*lines) = temp; 
         }
-        content[strcspn(content,"\n")]='\0';
         (*lines)[no_lines].content=(char *)malloc(strlen(content)+1);
         if(!(*lines)[no_lines].content){
             printf("Error in memory allocation for storing lines.\n");
@@ -135,6 +180,8 @@ int read_changes(changes ** lines,char * source){
         strcpy((*lines)[no_lines].content,content);
         (*lines)[no_lines].operation=operation;
         (*lines)[no_lines].line_no=line_number;
+        printf("Operation: %c, Line Number: %d, Content: %s\n", operation, line_number, content);
+        token = strtok(NULL, ",");
         no_lines++;
     }
     free(content);
