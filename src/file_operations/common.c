@@ -3,7 +3,8 @@
 #include<string.h>
 #include"common.h"
 
-// Read the File line by line & store it in lines c-string array & return the number of lines readed
+/*  This function is for reading files content.
+    Read the File line by line & store it in lines c-string array & return the number of lines readed*/
 int read_lines_file(char  ** lines,FILE * source){
     // create temporary buffer to got one line at a time from file 
     char * buffer=(char *)malloc(sizeof(char)*MAX_LINE_LENGTH);
@@ -39,21 +40,24 @@ int read_lines_file(char  ** lines,FILE * source){
     free(buffer);
     return no_lines;
 }
-
-// Read the File line by line & store it in lines c-string array & return the number of lines readed
+/*  This function is for reading formatted string content.
+    Read the formatted string line by line & store it in lines c-string array & return the number of lines readed */
 int read_lines_string(char  ** lines,char * source){
-    // create temporary buffer to got one line at a time from file 
+    // create temporary buffer to got one line at a time from formatted string 
     char * buffer=(char *)malloc(sizeof(char)*MAX_LINE_LENGTH);
     if(!buffer){
         printf("Error in memory allocation for buffer.\n");
         exit(EXIT_FAILURE);
     }
     int no_lines=0,capacity=MAX_LINES,temp=0;
+    // return 0 if source string is empty.
     if(source[0]=='\0'){
         return 0;
     }
 
+    // parse the string until the end of string
     while (source[temp] != '\0') {
+        // If there is nonempty line then read it from string and store it in c-string array
         if (sscanf(source + temp, "%[^\n]", buffer) == 1) {
             if(no_lines==capacity){
                 capacity*=2;
@@ -78,6 +82,7 @@ int read_lines_string(char  ** lines,char * source){
                 temp++;  
             }
         }
+        // If there is empty line then add "" in c-string array.
         if(source[temp]=='\n'){
             if(no_lines==capacity){
                 capacity*=2;
@@ -97,6 +102,7 @@ int read_lines_string(char  ** lines,char * source){
             no_lines++;
             temp++;
         }
+        // if string is completely parsed then free the dynamically allocated buffer & return lines readed
         if (source[temp] == '\0') {
             free(buffer);
             return no_lines;
@@ -105,9 +111,10 @@ int read_lines_string(char  ** lines,char * source){
     return no_lines;
 }
 
-// Read the File line by line & store it in 'changes' structure array & return the number of changes available in file
-// struct changes is used to manipulate the changes efficiently in memory
+/*  Read the File line by line & store it in 'changes' structure array & return the number of changes available in file
+    struct changes is used to manipulate the changes efficiently in memory */
 int read_changes(changes ** lines,char * source){
+    // create temporary buffer to got one change line at a time from formatted string 
     char * content=(char *)malloc(sizeof(char)*MAX_LINE_LENGTH);
     if(!content){
         printf("Error in memory allocation for buffer.\n");
@@ -116,30 +123,12 @@ int read_changes(changes ** lines,char * source){
     int no_lines=0,capacity=MAX_CHANGES,temp=0;
     char operation,*token;
     int line_number;
-    // while(sscanf(source, "%c,%d,%[^\n]\n", &operation, &line_number, content) == 3) {
-    //     if(no_lines==capacity){
-    //         capacity*=2;
-    //         changes * temp = realloc((*lines), sizeof(changes*) * capacity); 
-    //         if (!temp) {
-    //             printf("Error in memory allocation for storing lines pointer.");
-    //             exit(EXIT_FAILURE);
-    //         }
-    //         (*lines) = temp; 
-    //     }
-    //     content[strcspn(content,"\n")]='\0';
-    //     (*lines)[no_lines].content=(char *)malloc(strlen(content)+1);
-    //     if(!(*lines)[no_lines].content){
-    //         printf("Error in memory allocation for storing lines.\n");
-    //         exit(EXIT_FAILURE);
-    //     }
-    //     strcpy((*lines)[no_lines].content,content);
-    //     (*lines)[no_lines].operation=operation;
-    //     (*lines)[no_lines].line_no=line_number;
-    //     no_lines++;
-    // }
-    // free(content);
     token = strtok(source, ",");
+
+    // read the changes formatted string until the string is completely readed
     while (token != NULL) {
+        // get operation
+        // To handle empty content in difference field of changes 
         if(temp>2 && source[temp-2]=='\0'){
             operation=token[1];
         }
@@ -147,11 +136,16 @@ int read_changes(changes ** lines,char * source){
             operation = token[0]; 
         }
         temp+=2;
+
+        // get line number
         token = strtok(NULL, ",");
         if (token != NULL) {
             line_number = atoi(token);
         }
         temp+=strlen(token)+1;
+
+        //get content of difference
+        // To handle empty content in differnece filed of changes
         if(source[temp]=='\n'){
             // token = strtok(NULL, "\n");
             strcpy(content, "");
@@ -162,6 +156,8 @@ int read_changes(changes ** lines,char * source){
             strcpy(content, token); 
             temp+=strlen(token)+1;
         }
+
+        // insert the changes content into the in-memory 'changes' structure array
         if(no_lines==capacity){
             capacity*=2;
             changes * temp = realloc((*lines), sizeof(changes*) * capacity); 
@@ -179,7 +175,6 @@ int read_changes(changes ** lines,char * source){
         strcpy((*lines)[no_lines].content,content);
         (*lines)[no_lines].operation=operation;
         (*lines)[no_lines].line_no=line_number;
-        printf("Operation: %c, Line Number: %d, Content: %s\n", operation, line_number, content);
         token = strtok(NULL, ",");
         no_lines++;
     }

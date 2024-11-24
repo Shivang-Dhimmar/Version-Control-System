@@ -4,8 +4,8 @@
 #define MAX_LINES 1000
 #define MAX_LINE_LENGTH 1024
 #define MAX_CHANGES 1000
-#define MAX_CHANGE_BUFFER_SIZE 100000
 
+// In-memory structure to handle the changes operation efficiently
 typedef struct changes{
     char operation;
     int line_no;
